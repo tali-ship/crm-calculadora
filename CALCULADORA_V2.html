@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Atingimento CRM</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* ── Container principal ── */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 20px 20px 0 0;
+        }
+        .header p { opacity: 0.85; margin-top: 6px; font-size: 0.95em; }
+
+        /* ── Telas (screens) ── */
+        .screen { display: none; padding: 40px; }
+        .screen.active { display: block; }
+
+        /* ── Indicador de progresso ── */
+        .progress-bar {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            padding: 20px 40px 0;
+        }
+        .progress-step {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: #ddd;
+            transition: background 0.3s;
+        }
+        .progress-step.done  { background: #28a745; }
+        .progress-step.active { background: #667eea; }
+
+        /* ── Formulários gerais ── */
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 8px; color: #444; }
+        .form-group input, .form-group select {
+            width: 100%; padding: 12px;
+            border: 2px solid #e0e0e0; border-radius: 8px;
+            font-size: 1em; transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none; border-color: #667eea;
+        }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
+
+        /* ── Botões ── */
+        .btn-primary {
+            width: 100%; padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; border: none; border-radius: 12px;
+            font-size: 1.1em; font-weight: 700; cursor: pointer;
+            margin-top: 12px; transition: opacity 0.2s;
+        }
+        .btn-primary:hover { opacity: 0.9; }
+        .btn-success {
+            width: 100%; padding: 16px;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white; border: none; border-radius: 12px;
+            font-size: 1.1em; font-weight: 700; cursor: pointer;
+            margin-top: 12px; transition: opacity 0.2s;
+        }
+        .btn-success:hover { opacity: 0.9; }
+        .btn-secondary {
+            padding: 10px 20px;
+            background: #f0f0f0; color: #555;
+            border: none; border-radius: 8px;
+            font-size: 0.95em; font-weight: 600; cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-secondary:hover { background: #e0e0e0; }
+        .btn-row { display: flex; gap: 12px; align-items: center; margin-top: 20px; }
+        .btn-row .btn-primary { margin-top: 0; }
+
+        /* ── Tabela de setup ── */
+        .setup-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        .setup-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; padding: 10px 8px;
+            font-size: 0.82em; text-align: center; font-weight: 600;
+        }
+        .setup-table th:first-child { text-align: left; border-radius: 8px 0 0 0; }
+        .setup-table th:last-child  { border-radius: 0 8px 0 0; }
+        .setup-table td { padding: 6px 4px; vertical-align: middle; }
+        .setup-table tr:nth-child(even) td { background: #f8f9fa; }
+        .setup-table input[type="text"],
+        .setup-table input[type="number"] {
+            width: 100%; padding: 8px 10px;
+            border: 1.5px solid #ddd; border-radius: 6px;
+            font-size: 0.9em; text-align: center;
+        }
+        .setup-table input[type="text"] { text-align: left; }
+        .setup-table input:focus { outline: none; border-color: #667eea; }
+        .cluster-label { font-weight: 600; color: #555; padding-left: 4px; min-width: 110px; }
+
+        /* ── Seção de input da calculadora ── */
+        .input-section {
+            background: #f8f9fa; border-radius: 15px;
+            padding: 25px; margin-bottom: 30px;
+        }
+        .input-section h2 { margin-bottom: 20px; }
+        .toggle-group { display: flex; gap: 15px; }
+        .toggle-btn {
+            flex: 1; padding: 12px;
+            border: 2px solid #e0e0e0; background: white;
+            border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.95em;
+            transition: all 0.15s;
+        }
+        .toggle-btn.active {
+            background: #667eea; color: white; border-color: #667eea;
+        }
+
+        /* ── Resultados ── */
+        .results { display: none; margin-top: 30px; }
+        .results.show { display: block; }
+        .result-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 15px; padding: 25px; margin-bottom: 20px;
+        }
+        .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
+        .metric { background: white; padding: 20px; border-radius: 10px; }
+        .metric-label { font-size: 0.85em; color: #777; margin-bottom: 4px; }
+        .metric-value { font-size: 1.8em; font-weight: 700; color: #667eea; }
+        .metric-value.positive { color: #28a745; }
+        .metric-value.negative { color: #dc3545; }
+
+        /* ── Rodapé de reconfigurar ── */
+        .reconfig-link {
+            text-align: center; margin-top: 24px;
+            font-size: 0.82em; color: #aaa;
+        }
+        .reconfig-link a { color: #667eea; cursor: pointer; text-decoration: underline; }
+
+        /* ── Modal Lead Gate ── */
+        .modal-overlay {
+            display: none; position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+            z-index: 1000; align-items: center; justify-content: center;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-box {
+            background: white; border-radius: 20px; padding: 40px;
+            max-width: 440px; width: 90%;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.4);
+            text-align: center; position: relative;
+            animation: modalEntrada 0.3s ease;
+        }
+        @keyframes modalEntrada {
+            from { transform: translateY(-30px); opacity: 0; }
+            to   { transform: translateY(0);    opacity: 1; }
+        }
+        .modal-icon  { font-size: 3em; margin-bottom: 16px; }
+        .modal-box h2 { font-size: 1.5em; color: #333; margin-bottom: 8px; }
+        .modal-box > p { color: #666; font-size: 0.95em; margin-bottom: 28px; line-height: 1.5; }
+        .modal-form .form-group { text-align: left; margin-bottom: 16px; }
+        .modal-form .form-group label { font-size: 0.9em; color: #555; }
+        .modal-form .form-group input {
+            border: 2px solid #e0e0e0; border-radius: 10px;
+            padding: 12px 16px; font-size: 1em;
+        }
+        .modal-submit-btn {
+            width: 100%; padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; border: none; border-radius: 12px;
+            font-size: 1.1em; font-weight: 700; cursor: pointer;
+            margin-top: 8px; transition: opacity 0.2s;
+        }
+        .modal-submit-btn:hover { opacity: 0.9; }
+        .modal-footer { margin-top: 14px; font-size: 0.78em; color: #bbb; }
+
+        /* ── Info box ── */
+        .info-box {
+            background: #eef2ff; border-left: 4px solid #667eea;
+            border-radius: 8px; padding: 14px 18px;
+            font-size: 0.88em; color: #555; margin-bottom: 20px; line-height: 1.5;
+        }
+        .section-title {
+            font-size: 1.15em; font-weight: 700; color: #333;
+            margin-bottom: 6px;
+        }
+        .section-sub { font-size: 0.9em; color: #777; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<!-- ================================================
+     MODAL — LEAD GATE (nome + email)
+     ================================================ -->
+<div class="modal-overlay" id="modal-lead">
+    <div class="modal-box">
+        <div class="modal-icon">🧮</div>
+        <h2>Ver meu Atingimento</h2>
+        <p>Acesse gratuitamente os resultados da sua projeção.<br>
+           É só nome e email — sem spam, prometido.</p>
+        <form class="modal-form" id="form-lead" onsubmit="submitLead(event)">
+            <div class="form-group">
+                <label>Seu nome</label>
+                <input type="text" id="lead-nome" placeholder="Ex: Tali" required autocomplete="name">
+            </div>
+            <div class="form-group">
+                <label>Seu melhor email</label>
+                <input type="email" id="lead-email" placeholder="voce@empresa.com" required autocomplete="email">
+            </div>
+            <button type="submit" class="modal-submit-btn">🚀 Acessar a Calculadora</button>
+        </form>
+        <p class="modal-footer">🔒 Seus dados são usados apenas para liberar o acesso. Zero spam.</p>
+    </div>
+</div>
+
+<!-- ================================================
+     CONTAINER PRINCIPAL
+     ================================================ -->
+<div class="container">
+    <div class="header">
+        <h1>🧮 Calculadora de Engajamento por Segmentação CRM</h1>
+    </div>
+
+    <!-- Indicador de progresso -->
+    <div class="progress-bar" id="progress-bar">
+        <div class="progress-step" id="step-dot-1"></div>
+        <div class="progress-step" id="step-dot-2"></div>
+        <div class="progress-step" id="step-dot-3"></div>
+    </div>
+
+    <!-- ── TELA 1: Setup de Clusters ── -->
+    <div class="screen" id="screen-clusters">
+        <p class="section-title">📊 Passo 1 de 2 — Configure seus Clusters</p>
+        <p class="section-sub">Informe os dados de cada cluster que você usa. Os nomes podem ser editados.</p>
+        <div class="info-box">
+            💡 <strong>Taxa de Engajamento e Conversão</strong> são médias por cluster (independente do canal).
+            O volume por canal será configurado no próximo passo.
+        </div>
+
+        <div style="overflow-x:auto;">
+        <table class="setup-table" id="table-clusters">
+            <thead>
+                <tr>
+                    <th style="min-width:130px;">Cluster</th>
+                    <th>Meta</th>
+                    <th>Realizado</th>
+                    <th>Taxa Engaj. (%)</th>
+                    <th>Taxa Conv. (%)</th>
+                </tr>
+            </thead>
+            <tbody id="tbody-clusters"></tbody>
+        </table>
+        </div>
+
+        <div class="btn-row" style="margin-top:28px;">
+            <button class="btn-primary" onclick="irParaVolumes()">Próximo → Volumes por Canal</button>
+        </div>
+    </div>
+
+    <!-- ── TELA 2: Setup de Volumes ── -->
+    <div class="screen" id="screen-volumes">
+        <p class="section-title">📡 Passo 2 de 2 — Volume por Canal</p>
+        <p class="section-sub">Quantos clientes únicos cada canal atinge por cluster?</p>
+
+        <div style="overflow-x:auto;">
+        <table class="setup-table" id="table-volumes">
+            <thead>
+                <tr>
+                    <th style="min-width:130px;">Cluster</th>
+                    <th>Email</th>
+                    <th>Push</th>
+                    <th>WhatsApp</th>
+                    <th>In-App</th>
+                </tr>
+            </thead>
+            <tbody id="tbody-volumes"></tbody>
+        </table>
+        </div>
+
+        <div class="btn-row" style="margin-top:28px;">
+            <button class="btn-secondary" onclick="voltarClusters()">← Voltar</button>
+            <button class="btn-primary" onclick="concluirSetup()">✅ Concluir e Calcular</button>
+        </div>
+    </div>
+
+    <!-- ── TELA 3: Calculadora ── -->
+    <div class="screen" id="screen-calc">
+        <div class="input-section">
+            <h2>📊 Parâmetros da Campanha</h2>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Cluster</label>
+                    <select id="cluster"></select>
+                </div>
+                <div class="form-group">
+                    <label>Canal</label>
+                    <select id="canal">
+                        <option value="">Selecione...</option>
+                        <option value="email">Email</option>
+                        <option value="push">Push</option>
+                        <option value="whatsapp">WhatsApp</option>
+                        <option value="inapp">In-App</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Meta</label>
+                    <input type="number" id="meta" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Realizado</label>
+                    <input type="number" id="projetado" readonly>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Tipo de Campanha</label>
+                    <div class="toggle-group">
+                        <button class="toggle-btn active" data-group="tipo" data-value="nova">Nova</button>
+                        <button class="toggle-btn" data-group="tipo" data-value="repic">Repic</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Condição Comercial Exclusiva?</label>
+                    <div class="toggle-group">
+                        <button class="toggle-btn active" data-group="exclusiva" data-value="nao">Não</button>
+                        <button class="toggle-btn" data-group="exclusiva" data-value="sim">Sim</button>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-primary" onclick="calcular()">🚀 Calcular Atingimento</button>
+        </div>
+
+        <!-- Resultados -->
+        <div class="results" id="results">
+            <div class="result-card">
+                <h3>📈 Resultados</h3>
+                <div class="metric-grid">
+                    <div class="metric"><div class="metric-label">Gap</div><div class="metric-value" id="gap">-</div></div>
+                    <div class="metric"><div class="metric-label">Engajamento</div><div class="metric-value" id="engajamento">-</div></div>
+                    <div class="metric"><div class="metric-label">Prospects</div><div class="metric-value" id="prospects">-</div></div>
+                    <div class="metric"><div class="metric-label">Compradores 2ª+</div><div class="metric-value" id="compradores">-</div></div>
+                    <div class="metric"><div class="metric-label">Atingimento</div><div class="metric-value" id="atingimento">-</div></div>
+                    <div class="metric"><div class="metric-label">Campanhas Necessárias</div><div class="metric-value" id="qtd_campanhas">-</div></div>
+                </div>
+            </div>
+            <!-- Memória de cálculo oculta — usada internamente pelo motor -->
+            <div id="memoria" style="display:none;" aria-hidden="true"></div>
+            <div id="action-section" style="margin-top:20px;">
+                <button class="btn-success" onclick="executarSalvar()">✅ Vamos seguir?! (Salvar no Notion)</button>
+            </div>
+        </div>
+
+        <div class="reconfig-link">
+            <a onclick="reconfigurar()">⚙️ Reconfigurar meus parâmetros</a>
+        </div>
+    </div>
+</div><!-- /container -->
+
+<script>
+    // ════════════════════════════════════════════════
+    // CONFIGURAÇÃO
+    // ════════════════════════════════════════════════
+    const WEBHOOK_URL        = 'https://hook.us1.make.com/7ej65ggnfdivwkfgylctypepsf6gghqu'; // LeadGate (nome+email)
+    const WEBHOOK_NOTION_URL = 'https://hook.us1.make.com/nuurzk8p7umjwstglrydug6tn8ovvi7o'; // Dados campanha → DB0
+
+    const CLUSTER_DEFAULTS = [
+        { nome: 'Segmentação 1', meta: 100,    realizado: 100,  engaj: 15, conv: 3  },
+        { nome: 'Segmentação 2', meta: 70,     realizado: 50,   engaj: 12, conv: 5  },
+        { nome: 'Segmentação 3', meta: 50,     realizado: 25,   engaj: 10, conv: 3  },
+        { nome: 'Segmentação 4', meta: 50,     realizado: 10,   engaj: 2,  conv: 2  },
+        { nome: 'Segmentação 5', meta: 10000,  realizado: 5000, engaj: 2,  conv: 1  },
+        { nome: 'Segmentação 6', meta: 70000,  realizado: 15000,engaj: 1,  conv: 1  },
+        { nome: 'Segmentação 7', meta: 200000, realizado: 90000,engaj: 1,  conv: 1  },
+    ];
+
+    const VOLUME_DEFAULTS = [
+        { email: 70,     push: 45,     whatsapp: 45,     inapp: 50     },
+        { email: 800,    push: 400,    whatsapp: 300,    inapp: 200    },
+        { email: 500,    push: 500,    whatsapp: 500,    inapp: 500    },
+        { email: 800,    push: 700,    whatsapp: 600,    inapp: 500    },
+        { email: 500000, push: 400000, whatsapp: 200000, inapp: 100000 },
+        { email: 500000, push: 400000, whatsapp: 200000, inapp: 100000 },
+        { email: 500000, push: 400000, whatsapp: 200000, inapp: 100000 },
+    ];
+
+    // ════════════════════════════════════════════════
+    // ESTADO
+    // ════════════════════════════════════════════════
+    let leadRegistrado = sessionStorage.getItem('crmLeadRegistrado') === 'true';
+    let leadNome       = sessionStorage.getItem('crmLeadNome') || '';
+    let cerebro        = null; // preenchido após setup
+
+    // ════════════════════════════════════════════════
+    // INICIALIZAÇÃO
+    // ════════════════════════════════════════════════
+    window.addEventListener('DOMContentLoaded', () => {
+        construirTabelaClusters();
+        construirTabelaVolumes();
+        inicializar();
+    });
+
+    function inicializar() {
+        const savedCerebro = localStorage.getItem('crmCerebro');
+        if (!leadRegistrado) {
+            // Precisa de cadastro primeiro
+            document.getElementById('modal-lead').classList.add('show');
+        } else if (!savedCerebro) {
+            // Cadastrado mas sem setup
+            mostrarTela('screen-clusters');
+            atualizarProgresso(1);
+        } else {
+            // Tudo pronto — vai direto para calculadora
+            cerebro = JSON.parse(savedCerebro);
+            carregarSelectCluster();
+            mostrarTela('screen-calc');
+            atualizarProgresso(3);
+        }
+    }
+
+    // ════════════════════════════════════════════════
+    // LEAD GATE
+    // ════════════════════════════════════════════════
+    function submitLead(event) {
+        event.preventDefault();
+        const nome  = document.getElementById('lead-nome').value.trim();
+        const email = document.getElementById('lead-email').value.trim();
+
+        // Fire-and-forget
+        try {
+            fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nome, email, origem: 'Calculadora CRM V2', data: new Date().toISOString() })
+            }).catch(e => console.warn('⚠️ Webhook:', e.message));
+        } catch(e) {}
+
+        leadRegistrado = true;
+        leadNome = nome;
+        sessionStorage.setItem('crmLeadRegistrado', 'true');
+        sessionStorage.setItem('crmLeadNome', nome);
+
+        document.getElementById('modal-lead').classList.remove('show');
+
+        // Vai para setup ou calculadora
+        const savedCerebro = localStorage.getItem('crmCerebro');
+        if (savedCerebro) {
+            cerebro = JSON.parse(savedCerebro);
+            carregarSelectCluster();
+            mostrarTela('screen-calc');
+            atualizarProgresso(3);
+        } else {
+            mostrarTela('screen-clusters');
+            atualizarProgresso(1);
+        }
+    }
+
+    // ════════════════════════════════════════════════
+    // SETUP — TELA 1: CLUSTERS
+    // ════════════════════════════════════════════════
+    function construirTabelaClusters() {
+        // Carrega cerebro salvo para pré-preencher com valores do usuário (não defaults)
+        const savedRaw = localStorage.getItem('crmCerebro');
+        const saved = savedRaw ? JSON.parse(savedRaw) : null;
+        const tbody = document.getElementById('tbody-clusters');
+        tbody.innerHTML = '';
+        CLUSTER_DEFAULTS.forEach((c, i) => {
+            const key = `cluster_${i}`;
+            const nome  = saved?.[key]?.nome                          ?? c.nome;
+            const meta  = saved?.[key]?.meta                          ?? c.meta;
+            const real  = saved?.[key]?.projetado                     ?? c.realizado;
+            const engaj = saved?.[key] ? (saved[key].taxa_engajamento * 100) : c.engaj;
+            const conv  = saved?.[key] ? (saved[key].taxa_conversao  * 100) : c.conv;
+            tbody.innerHTML += `
+            <tr>
+                <td><input type="text"   id="c-nome-${i}"  value="${nome}"  placeholder="Nome do cluster"></td>
+                <td><input type="number" id="c-meta-${i}"  value="${meta}"  min="0" placeholder="Meta"></td>
+                <td><input type="number" id="c-real-${i}"  value="${real}"  min="0" placeholder="Realizado"></td>
+                <td><input type="number" id="c-engaj-${i}" value="${engaj}" min="0" max="100" step="0.1" placeholder="%"></td>
+                <td><input type="number" id="c-conv-${i}"  value="${conv}"  min="0" max="100" step="0.1" placeholder="%"></td>
+            </tr>`;
+        });
+    }
+
+    function irParaVolumes() {
+        // Valida preenchimento mínimo
+        for (let i = 0; i < 7; i++) {
+            const nome = document.getElementById(`c-nome-${i}`).value.trim();
+            const meta = document.getElementById(`c-meta-${i}`).value;
+            if (!nome || !meta) {
+                alert(`Preencha Nome e Meta do Cluster ${i+1}.`);
+                return;
+            }
+        }
+        mostrarTela('screen-volumes');
+        atualizarProgresso(2);
+    }
+
+    function voltarClusters() {
+        mostrarTela('screen-clusters');
+        atualizarProgresso(1);
+    }
+
+    // ════════════════════════════════════════════════
+    // SETUP — TELA 2: VOLUMES
+    // ════════════════════════════════════════════════
+    function construirTabelaVolumes() {
+        // Carrega cerebro salvo para pré-preencher volumes do usuário (não defaults)
+        const savedRaw = localStorage.getItem('crmCerebro');
+        const saved = savedRaw ? JSON.parse(savedRaw) : null;
+        const tbody = document.getElementById('tbody-volumes');
+        tbody.innerHTML = '';
+        CLUSTER_DEFAULTS.forEach((c, i) => {
+            const key = `cluster_${i}`;
+            const v = VOLUME_DEFAULTS[i];
+            const nomeExibido = saved?.[key]?.nome                    ?? c.nome;
+            const email       = saved?.[key]?.volumes?.email          ?? v.email;
+            const push        = saved?.[key]?.volumes?.push           ?? v.push;
+            const whatsapp    = saved?.[key]?.volumes?.whatsapp       ?? v.whatsapp;
+            const inapp       = saved?.[key]?.volumes?.inapp          ?? v.inapp;
+            tbody.innerHTML += `
+            <tr>
+                <td class="cluster-label" id="vol-label-${i}">${nomeExibido}</td>
+                <td><input type="number" id="v-email-${i}"    value="${email}"    min="0" placeholder="0"></td>
+                <td><input type="number" id="v-push-${i}"     value="${push}"     min="0" placeholder="0"></td>
+                <td><input type="number" id="v-wpp-${i}"      value="${whatsapp}" min="0" placeholder="0"></td>
+                <td><input type="number" id="v-inapp-${i}"    value="${inapp}"    min="0" placeholder="0"></td>
+            </tr>`;
+        });
+    }
+
+    // Sincroniza nomes de clusters na tabela de volumes
+    function sincronizarNomesVolumes() {
+        for (let i = 0; i < 7; i++) {
+            const nome = document.getElementById(`c-nome-${i}`)?.value || `Cluster ${i+1}`;
+            const lbl  = document.getElementById(`vol-label-${i}`);
+            if (lbl) lbl.textContent = nome;
+        }
+    }
+
+    function concluirSetup() {
+        sincronizarNomesVolumes();
+        // Monta o objeto cerebro com os dados inseridos
+        const novoCerebro = {};
+        for (let i = 0; i < 7; i++) {
+            const key  = `cluster_${i}`;
+            const nome = document.getElementById(`c-nome-${i}`).value.trim() || `Cluster ${i+1}`;
+            novoCerebro[key] = {
+                nome,
+                taxa_engajamento: parseFloat(document.getElementById(`c-engaj-${i}`).value) / 100,
+                taxa_conversao:   parseFloat(document.getElementById(`c-conv-${i}`).value)  / 100,
+                projetado: parseFloat(document.getElementById(`c-real-${i}`).value),
+                meta:      parseFloat(document.getElementById(`c-meta-${i}`).value),
+                volumes: {
+                    email:    parseFloat(document.getElementById(`v-email-${i}`).value) || 0,
+                    push:     parseFloat(document.getElementById(`v-push-${i}`).value)  || 0,
+                    whatsapp: parseFloat(document.getElementById(`v-wpp-${i}`).value)   || 0,
+                    inapp:    parseFloat(document.getElementById(`v-inapp-${i}`).value) || 0,
+                }
+            };
+        }
+        cerebro = novoCerebro;
+        localStorage.setItem('crmCerebro', JSON.stringify(novoCerebro));
+        carregarSelectCluster();
+        mostrarTela('screen-calc');
+        atualizarProgresso(3);
+    }
+
+    function reconfigurar() {
+        if (!confirm('Isso vai abrir o setup novamente. Seus cálculos atuais serão mantidos. Continuar?')) return;
+        mostrarTela('screen-clusters');
+        atualizarProgresso(1);
+    }
+
+    // ════════════════════════════════════════════════
+    // CALCULADORA
+    // ════════════════════════════════════════════════
+    function carregarSelectCluster() {
+        const sel = document.getElementById('cluster');
+        sel.innerHTML = '<option value="">Selecione...</option>';
+        Object.entries(cerebro).forEach(([key, dados]) => {
+            sel.innerHTML += `<option value="${key}">${dados.nome}</option>`;
+        });
+
+        // onchange em vez de addEventListener para evitar listeners duplicados a cada reconfiguração
+        sel.onchange = function() {
+            const key = this.value;
+            if (key && cerebro[key]) {
+                document.getElementById('meta').value      = cerebro[key].meta;
+                document.getElementById('projetado').value = cerebro[key].projetado;
+            } else {
+                document.getElementById('meta').value      = '';
+                document.getElementById('projetado').value = '';
+            }
+        };
+
+        // Toggle buttons
+        document.querySelectorAll('.toggle-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const group = this.dataset.group;
+                document.querySelectorAll(`[data-group="${group}"]`).forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+    }
+
+    // Motor de cálculo proprietário — lógica protegida
+    function calcular() { eval(atob('aWYoIWRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdjbHVzdGVyJykudmFsdWV8fCFkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnY2FuYWwnKS52YWx1ZSl7YWxlcnQoJ1NlbGVjaW9uZSBDbHVzdGVyIGUgQ2FuYWwhJyk7fWVsc2V7Y29uc3QgY2x1c3RlcktleT1kb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnY2x1c3RlcicpLnZhbHVlO2NvbnN0IGNhbmFsPWRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdjYW5hbCcpLnZhbHVlO2NvbnN0IGRhZG9zPWNlcmVicm9bY2x1c3RlcktleV07Y29uc3Qgdm9sdW1lQ2FuYWw9ZGFkb3Mudm9sdW1lc1tjYW5hbF07Y29uc3QgbWV0YT1kYWRvcy5tZXRhO2NvbnN0IHByb2pldGFkbz1kYWRvcy5wcm9qZXRhZG87Y29uc3QgZ2FwPW1ldGEtcHJvamV0YWRvO2NvbnN0IHRpcG89ZG9jdW1lbnQucXVlcnlTZWxlY3RvcignW2RhdGEtZ3JvdXA9InRpcG8iXS5hY3RpdmUnKS5kYXRhc2V0LnZhbHVlO2NvbnN0IGV4Y2x1c2l2YT1kb2N1bWVudC5xdWVyeVNlbGVjdG9yKCdbZGF0YS1ncm91cD0iZXhjbHVzaXZhIl0uYWN0aXZlJykuZGF0YXNldC52YWx1ZT09PSdzaW0nO2NvbnN0IHZvbE1haXM9TWF0aC5yb3VuZCh2b2x1bWVDYW5hbCowLjMwKTtjb25zdCB2b2xNZW5vcz12b2x1bWVDYW5hbC12b2xNYWlzO2xldCB0YXhhRW5nYWpNYWlzPWRhZG9zLnRheGFfZW5nYWphbWVudG87bGV0IHRheGFFbmdhak1lbm9zPWRhZG9zLnRheGFfZW5nYWphbWVudG8vMjtpZih0aXBvPT09J25vdmEnKXt0YXhhRW5nYWpNYWlzKz0wLjAxO3RheGFFbmdhak1lbm9zKz0wLjAxO31pZihleGNsdXNpdmEpe3RheGFFbmdhak1haXMrPTAuMDE7dGF4YUVuZ2FqTWVub3MrPTAuMDE7fWNvbnN0IGVuZ2FqTWFpcz1NYXRoLnJvdW5kKHZvbE1haXMqdGF4YUVuZ2FqTWFpcyk7Y29uc3QgZW5nYWpNZW5vcz1NYXRoLnJvdW5kKHZvbE1lbm9zKnRheGFFbmdhak1lbm9zKTtjb25zdCBlbmdhalRvdGFsPWVuZ2FqTWFpcytlbmdhak1lbm9zO2xldCB0YXhhQ29udk1haXM9ZGFkb3MudGF4YV9jb252ZXJzYW87bGV0IHRheGFDb252TWVub3M9ZGFkb3MudGF4YV9jb252ZXJzYW8vMjtpZih0aXBvPT09J25vdmEnKXt0YXhhQ29udk1haXMrPTAuMDE7dGF4YUNvbnZNZW5vcys9MC4wMTt9aWYoZXhjbHVzaXZhKXt0YXhhQ29udk1haXMrPTAuMDE7dGF4YUNvbnZNZW5vcys9MC4wMTt9Y29uc3QgY29udk1haXM9TWF0aC5yb3VuZChlbmdhak1haXMqdGF4YUNvbnZNYWlzKTtjb25zdCBjb252TWVub3M9TWF0aC5yb3VuZChlbmdhak1lbm9zKnRheGFDb252TWVub3MpO2NvbnN0IGNvbnZUb3RhbD1jb252TWFpcytjb252TWVub3M7Y29uc3Qgbm92b1Byb2pldGFkbz1wcm9qZXRhZG8rZW5nYWpUb3RhbDtjb25zdCBhdGluZ2ltZW50bz0obm92b1Byb2pldGFkby9tZXRhKSoxMDA7Y29uc3QgcXRkQ2FtcGFuaGFzPWdhcD4wP01hdGguY2VpbChnYXAvZW5nYWpUb3RhbCk6MDtkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnZ2FwJykudGV4dENvbnRlbnQ9Z2FwLnRvTG9jYWxlU3RyaW5nKCdwdC1CUicpO2RvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdlbmdhamFtZW50bycpLnRleHRDb250ZW50PWVuZ2FqVG90YWwudG9Mb2NhbGVTdHJpbmcoJ3B0LUJSJyk7ZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ3Byb3NwZWN0cycpLnRleHRDb250ZW50PWNvbnZUb3RhbC50b0xvY2FsZVN0cmluZygncHQtQlInKTtkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnY29tcHJhZG9yZXMnKS50ZXh0Q29udGVudD1jb252VG90YWwudG9Mb2NhbGVTdHJpbmcoJ3B0LUJSJyk7ZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ2F0aW5naW1lbnRvJykudGV4dENvbnRlbnQ9YXRpbmdpbWVudG8udG9GaXhlZCgyKSsnJSc7ZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ2F0aW5naW1lbnRvJykuY2xhc3NOYW1lPSdtZXRyaWMtdmFsdWUgJysoYXRpbmdpbWVudG8+PTEwMD8ncG9zaXRpdmUnOiduZWdhdGl2ZScpO2RvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdxdGRfY2FtcGFuaGFzJykudGV4dENvbnRlbnQ9cXRkQ2FtcGFuaGFzO2RvY3VtZW50LmdldEVsZW1lbnRCeUlkKCdxdGRfY2FtcGFuaGFzJykuY2xhc3NOYW1lPSdtZXRyaWMtdmFsdWUgJysocXRkQ2FtcGFuaGFzPD0zPydwb3NpdGl2ZSc6J25lZ2F0aXZlJyk7ZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ21lbW9yaWEnKS5pbm5lckhUTUw9Jyc7ZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ3Jlc3VsdHMnKS5jbGFzc0xpc3QuYWRkKCdzaG93Jyk7ZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoJ3Jlc3VsdHMnKS5zY3JvbGxJbnRvVmlldyh7YmVoYXZpb3I6J3Ntb290aCd9KTt9Cg==')); }
+
+    // ════════════════════════════════════════════════
+    // SALVAR NO NOTION (CSV)
+    // ════════════════════════════════════════════════
+    function executarSalvar() {
+        const clusterKey = document.getElementById('cluster').value;
+        const canal      = document.getElementById('canal').value;
+        const tipo       = document.querySelector('[data-group="tipo"].active').dataset.value;
+        const exclusiva  = document.querySelector('[data-group="exclusiva"].active').dataset.value === 'sim';
+        const dados      = cerebro[clusterKey];
+
+        const meta         = dados.meta;
+        const projetado    = dados.projetado;
+        const gap          = meta - projetado;
+        const volumeCanal  = dados.volumes[canal];
+        const engajTotal   = parseInt(document.getElementById('engajamento').textContent.replace(/\./g,''));
+        const convTotal    = parseInt(document.getElementById('prospects').textContent.replace(/\./g,''));
+        const atingimento  = parseFloat(document.getElementById('atingimento').textContent);
+        const qtdCampanhas = parseInt(document.getElementById('qtd_campanhas').textContent);
+        const novoProjetado = projetado + engajTotal;
+
+        const nomeCampanha = prompt('Nome da campanha:', `Campanha ${dados.nome} - ${canal}`);
+        if (!nomeCampanha) return;
+
+        const hoje = new Date();
+        const dataD7 = new Date(hoje);
+        dataD7.setDate(hoje.getDate() + 7);
+        const dataFormatada = dataD7.toISOString().split('T')[0];
+        const dataDisparo = prompt('Data de disparo (AAAA-MM-DD):', dataFormatada);
+        if (!dataDisparo) return;
+
+        const timestampVinculo = Date.now();
+        const csv = [
+            'Timestamp Vinculo,Nome Campanha,Cluster,Canal,Tipo,Exclusiva,Meta,Realizado,Gap,Volume Canal,Engajamento Total,Prospects,Compradores 2ª+,Novo Realizado,Atingimento (%),Campanhas Necessárias,Taxa Engajamento (%),Taxa Conversão (%),Data de Disparo,Status',
+            `${timestampVinculo},"${nomeCampanha}","${dados.nome}","${canal}","${tipo.charAt(0).toUpperCase()+tipo.slice(1)}","${exclusiva?'Sim':'Não'}",${meta},${projetado},${gap},${volumeCanal},${engajTotal},${convTotal},${convTotal},${novoProjetado},${atingimento.toFixed(2)},${qtdCampanhas},${(dados.taxa_engajamento*100).toFixed(1)},${(dados.taxa_conversao*100).toFixed(1)},${dataDisparo},"Pendente"`
+        ].join('\n');
+
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.setAttribute('href', URL.createObjectURL(blob));
+        link.setAttribute('download', `calculadora_crm_${Date.now()}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Envia dados da campanha para o Make.com → DB0 Notion
+        const payloadNotion = {
+            timestamp_vinculo:    timestampVinculo,
+            nome_campanha:        nomeCampanha,
+            cluster:              dados.nome,
+            canal:                canal,
+            tipo:                 tipo.charAt(0).toUpperCase() + tipo.slice(1),
+            exclusiva:            exclusiva ? 'Sim' : 'Não',
+            meta:                 meta,
+            realizado:            projetado,
+            gap:                  gap,
+            volume_canal:         volumeCanal,
+            engajamento_total:    engajTotal,
+            prospects:            convTotal,
+            novo_realizado:       novoProjetado,
+            atingimento:          parseFloat(atingimento.toFixed(2)),
+            qtd_campanhas:        qtdCampanhas,
+            taxa_engajamento:     parseFloat((dados.taxa_engajamento * 100).toFixed(1)),
+            taxa_conversao:       parseFloat((dados.taxa_conversao * 100).toFixed(1)),
+            data_disparo:         dataDisparo,
+            status:               'Pendente'
+        };
+        fetch(WEBHOOK_NOTION_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payloadNotion)
+        }).catch(e => console.warn('⚠️ Webhook Notion:', e.message));
+
+        // Mostra modal de confirmação
+        const msgDiv = document.createElement('div');
+        msgDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,0.25);padding:36px 40px;z-index:9999;max-width:420px;text-align:center;font-family:inherit;';
+        msgDiv.innerHTML = `
+            <div style="font-size:2rem;margin-bottom:12px">✅</div>
+            <h3 style="margin-bottom:8px;color:#333">Tudo certo${leadNome ? ', ' + leadNome : ''}!</h3>
+            <p style="color:#666;margin-bottom:8px;line-height:1.5">Coloque o número abaixo no bot nome: <strong>gibosa crescente</strong> que fica no Telegram (siga as instruções que receberá no seu email) e veja o processo de ponta a ponta de uma forma nunca antes vista!</p>
+            <div style="background:#f4f4f8;border-radius:8px;padding:12px 16px;font-size:1.1rem;font-weight:700;color:#333;letter-spacing:1px;margin-bottom:24px;">
+                🔑 ${timestampVinculo}
+            </div>
+            <button onclick="this.parentElement.remove()" style="background:linear-gradient(135deg,#667eea,#764ba2);border:none;color:#fff;padding:12px 28px;border-radius:10px;cursor:pointer;font-size:1rem;font-weight:700;">Fechar</button>
+        `;
+        document.body.appendChild(msgDiv);
+    }
+
+    // ════════════════════════════════════════════════
+    // UTILITÁRIOS
+    // ════════════════════════════════════════════════
+    function mostrarTela(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function atualizarProgresso(step) {
+        for (let i = 1; i <= 3; i++) {
+            const dot = document.getElementById(`step-dot-${i}`);
+            if (i < step)       dot.className = 'progress-step done';
+            else if (i === step) dot.className = 'progress-step active';
+            else                dot.className = 'progress-step';
+        }
+    }
+</script>
+</body>
+</html>
