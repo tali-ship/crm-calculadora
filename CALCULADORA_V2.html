@@ -438,6 +438,21 @@
         }
     }
 
+    function enviarWebhook(url, payload) {
+        const body = new URLSearchParams();
+
+        Object.entries(payload).forEach(([key, value]) => {
+            if (value === undefined || value === null) return;
+            body.append(key, String(value));
+        });
+
+        return fetch(url, {
+            method: 'POST',
+            body,
+            keepalive: true
+        });
+    }
+
     // ════════════════════════════════════════════════
     // LEAD GATE
     // ════════════════════════════════════════════════
@@ -448,10 +463,11 @@
 
         // Fire-and-forget
         try {
-            fetch(WEBHOOK_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nome, email, origem: 'Calculadora CRM V2', data: new Date().toISOString() })
+            enviarWebhook(WEBHOOK_URL, {
+                nome,
+                email,
+                origem: 'Calculadora CRM V2',
+                data: new Date().toISOString()
             }).catch(e => console.warn('⚠️ Webhook:', e.message));
         } catch(e) {}
 
@@ -694,11 +710,8 @@
             data_disparo:         dataDisparo,
             status:               'Pendente'
         };
-        fetch(WEBHOOK_NOTION_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payloadNotion)
-        }).catch(e => console.warn('⚠️ Webhook Notion:', e.message));
+        enviarWebhook(WEBHOOK_NOTION_URL, payloadNotion)
+            .catch(e => console.warn('⚠️ Webhook Notion:', e.message));
 
         // Mostra modal de confirmação
         const msgDiv = document.createElement('div');
